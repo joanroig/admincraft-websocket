@@ -34,6 +34,7 @@ Admincraft WebSocket allows remote control of Minecraft Bedrock servers hosted i
 ### Current Project Status
 
 - Designed to work alongside [Admincraft](https://github.com/joanroig/admincraft) for GUI-based server management.
+- Currently optimized for use with Oracle Always Free, using a server created with [docker-minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server/tree/master).
 
 ## Getting Started
 
@@ -53,7 +54,7 @@ You can set up your server following [the server setup guide from Admincraft](ht
 
 2. **Build and run the Docker container:**
 
-   `docker-compose up --build`
+   `sudo docker-compose up --build`
 
    The WebSocket server will be available on port `8080`.
 
@@ -63,9 +64,34 @@ You can set up your server following [the server setup guide from Admincraft](ht
 
 1. **Run a demo container**
 
-   `docker run -p 8080:8080 --name admincraft-websocket -e SECRET_KEY=your_secret_key_here admincraft-websocket`
+   `sudo docker run -p 8080:8080 --name admincraft-websocket -e SECRET_KEY=your_secret_key_here admincraft-websocket`
 
 2. The server will start on port `8080` by default.
+
+### Running together with docker compose
+
+Change the websocket service in the `docker-compose.yml` file to remove the image configuration and add the build configuration to point to the local folder with the project code:
+
+```
+services:
+  websocket:
+    container_name: websocket
+    build:
+      context: ./admincraft-websocket
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      minecraft:
+        condition: service_healthy
+    ports:
+      - 443:8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /path/to/selfsigned.crt:/path/to/selfsigned.crt:ro
+      - /path/to/selfsigned.key:/path/to/selfsigned.key:ro
+    environment:
+      SECRET_KEY: your_secret_key_here
+```
 
 ### Docker Build & Push
 
@@ -73,15 +99,15 @@ To build and push the Docker image to a repository:
 
 1. **Build the Docker image:**
 
-   `docker build -t your-docker-username/admincraft-websocket .`
+   `sudo docker build -t your-docker-username/admincraft-websocket .`
 
 2. **Tag the image:**
 
-   `docker tag your-docker-username/admincraft-websocket your-docker-username/admincraft-websocket:latest`
+   `sudo docker tag your-docker-username/admincraft-websocket your-docker-username/admincraft-websocket:latest`
 
 3. **Push the image to Docker Hub:**
 
-   `docker push your-docker-username/admincraft-websocket:latest`
+   `sudo docker push your-docker-username/admincraft-websocket:latest`
 
 ### Architecture
 
