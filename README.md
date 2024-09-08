@@ -84,13 +84,14 @@ services:
       minecraft:
         condition: service_healthy
     ports:
-      - 443:8080
+      - 8080:8080
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /path/to/selfsigned.crt:/path/to/selfsigned.crt:ro
-      - /path/to/selfsigned.key:/path/to/selfsigned.key:ro
+      - /var/run/docker.sock:/var/run/docker.sock # Mount Docker socket
+      - ./certs/server.crt:/usr/src/app/certs/server.crt:ro
+      - ./certs/server.key:/usr/src/app/certs/server.key:ro
     environment:
-      SECRET_KEY: your_secret_key_here
+      SECRET_KEY: YOUR_SECRET_KEY_HERE
+      USE_SSL: "true" # Change to "false" to disable SSL
 ```
 
 ### Docker Build & Push
