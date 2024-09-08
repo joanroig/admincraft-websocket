@@ -1,16 +1,38 @@
+const fs = require("fs");
+const https = require("https");
+const http = require("http");
 const WebSocket = require("ws");
 const { exec, spawn } = require("child_process");
-const jwt = require("jsonwebtoken"); // For token-based authentication
+const jwt = require("jsonwebtoken");
 
 const SECRET_KEY = process.env.SECRET_KEY;
+const USE_SSL = process.env.USE_SSL === "true";
 
 if (!SECRET_KEY) {
   throw new Error("SECRET_KEY is not defined in docker-compose.yml");
 }
 
-const wss = new WebSocket.Server({ port: 8080 });
+const PORT = 8080;
+const CERT_PATH = "./certs/server.crt";
+const KEY_PATH = "./certs/server.key";
 
-console.log("WebSocket server is listening on port 8080");
+let server;
+
+if (USE_SSL) {
+  // Load self-signed SSL certificate
+  server = https.createServer({
+    cert: fs.readFileSync(CERT_PATH),
+    key: fs.readFileSync(KEY_PATH),
+  });
+} else {
+  server = http.createServer();
+}
+
+const wss = new WebSocket.Server({ server });
+
+server.listen(PORT, () => {
+  console.log(`WebSocket server is listening on port ${PORT}${USE_SSL ? " with SSL enabled" : " without SSL"}`);
+});
 
 function authenticate(token) {
   try {
@@ -25,7 +47,7 @@ function authenticate(token) {
 wss.on("connection", (ws, request) => {
   console.log("New client connected");
 
-  const url = new URL(request.url, `ws://${request.headers.host}`);
+  const url = new URL(request.url, `${USE_SSL ? "wss" : "ws"}://${request.headers.host}`);
   const token = url.searchParams.get("token");
 
   const user = authenticate(token);
