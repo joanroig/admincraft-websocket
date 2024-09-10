@@ -73,25 +73,46 @@ You can set up your server following [the server setup guide from Admincraft](ht
 Change the websocket service in the `docker-compose.yml` file to remove the image configuration and add the build configuration to point to the local folder with the project code:
 
 ```
+version: "3"
 services:
+
+  [...]
+
   websocket:
     container_name: websocket
     build:
       context: ./admincraft-websocket
-      dockerfile: Dockerfile
+      dockerfile: Dockerfileadmincraft-websocket:latest
     restart: always
     depends_on:
+      # Make sure the minecraft service starts before the websockets service
       minecraft:
         condition: service_healthy
     ports:
       - 8080:8080
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock # Mount Docker socket
-      - ./certs/server.crt:/usr/src/app/certs/server.crt:ro
-      - ./certs/server.key:/usr/src/app/certs/server.key:ro
+      # Mount Docker socket
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Needed if environment.USE_SSL is "true"
+      - ./certs:/usr/src/app/certs:ro
     environment:
+      # Login password to use in admincraft (use alphanumeric characters only)
       SECRET_KEY: YOUR_SECRET_KEY_HERE
-      USE_SSL: "true" # Change to "false" to disable SSL
+      # Enable or disable SSL
+      USE_SSL: "false"
+```
+
+You can also run a separate docker compose file by providing it:
+`sudo docker compose -f docker-compose_ssl.yml up -d`
+
+#### Troubleshoot
+
+You can stop the servers, remove all containers and all images with:
+
+```
+sudo docker compose down
+sudo docker rm -vf $(sudo docker ps -aq)
+sudo docker rmi -f $(sudo docker images -aq)
 ```
 
 ### Docker Build & Push
