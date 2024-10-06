@@ -114,22 +114,35 @@ sudo docker compose down
 sudo docker rm -vf $(sudo docker ps -aq)
 sudo docker rmi -f $(sudo docker images -aq)
 ```
+### Multi-architecture Docker Build & Push
 
-### Docker Build & Push
+To build and push the Docker image for both amd64 and arm64 architectures:
 
-To build and push the Docker image to a repository:
+1. **Install Docker Buildx (if not already installed):**
 
-1. **Build the Docker image:**
+   Ensure Docker Buildx is available:
 
-   `sudo docker build -t your-docker-username/admincraft-websocket .`
+   `sudo docker buildx create --use`
 
-2. **Tag the image:**
+2. **Create or use a multi-architecture builder:**
 
-   `sudo docker tag your-docker-username/admincraft-websocket your-docker-username/admincraft-websocket:latest`
+   Create a new builder instance:
 
-3. **Push the image to Docker Hub:**
+   `sudo docker buildx create --name admincraft-websocket-builder --use --driver docker-container`
 
-   `sudo docker push your-docker-username/admincraft-websocket:latest`
+   To use an existing instance:
+
+   `sudo docker buildx use admincraft-websocket-builder`
+
+3. **Build the Docker images for both architectures:**
+
+   Use the following command to build and push images for both `amd64` and `arm64`:
+
+   `sudo docker buildx build --platform linux/amd64,linux/arm64 -t your-docker-username/admincraft-websocket:latest --push .`
+
+4. **Verify the images on Docker Hub:**
+
+   After the build is complete, check your Docker Hub repository to ensure both architectures are available.
 
 ### Architecture
 
