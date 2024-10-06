@@ -18,10 +18,6 @@
     </a>
     <a href="https://nodejs.org">
         <img src="https://img.shields.io/badge/Node.js-339933?logo=node.js&logoColor=fff&style=flat-square" alt="Node.js badge"/>
-    </a>
-    <a href="https://github.com/joanroig/admincraft-websocket/issues">
-        <img src="https://img.shields.io/github/issues-raw/joanroig/admincraft-websocket.svg?maxAge=2592000&label=Open Issues&style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAMtJREFUOI1j1G5l+M+ABSiJ1GMTZmC++pqBgYGB4bb4NAYGBgYGJqyqSAAsMIbqyywUkzlfQxz2XZQRla8tysDAwMCg/bqOyi5gExNBccl3bTSboS6BhcEvqD7KXYBhIwPEJQw4woAB6lKYOOUugPndMDQSReL8tGUoNhtmRWGVp14sHFu9nIGBgYHhz823DAwMDAx2NTkoCg+1TEHh8woJUccFjGEtdSh5Ad2v6ADmd6rFAqNnUc5/BgaEnz6/e4dXA0zdr1dvqOMCAHUPQJl6c3AoAAAAAElFTkSuQmCC" alt="Open issues" />
-    </a>
     <a href="https://hub.docker.com/r/joanroig/admincraft-websocket">
         <img src="https://img.shields.io/docker/pulls/joanroig/admincraft-websocket?style=flat-square&logo=docker&label=Docker Pulls" alt="Docker Pulls"/>
     </a>
@@ -35,6 +31,10 @@ Admincraft WebSocket allows remote control of Minecraft Bedrock servers hosted i
 
 - Designed to work alongside [Admincraft](https://github.com/joanroig/admincraft) for GUI-based server management.
 - Currently optimized for use with Oracle Always Free, using a server created with [docker-minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server/tree/master).
+
+## Issues
+
+To open an issue, please use the [Admincraft's issues page](https://github.com/joanroig/admincraft/issues/new/choose).
 
 ## Getting Started
 
