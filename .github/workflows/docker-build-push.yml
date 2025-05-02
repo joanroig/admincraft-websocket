@@ -113,6 +113,15 @@ jobs:
             org.opencontainers.image.description=Admincraft WebSocket server
             org.opencontainers.image.version=${{ steps.versioning.outputs.full_version }}
 
+      - name: Update Docker Hub Description
+        uses: peter-evans/dockerhub-description@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: joanroig/admincraft-websocket
+          readme-filepath: ./README.md
+          short-description: "WebSocket server to control Minecraft Bedrock Dockerized servers with Admincraft"
+
       - name: Create Git Tag
         run: |
           git config user.name github-actions
