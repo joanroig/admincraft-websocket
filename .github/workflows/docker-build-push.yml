@@ -6,6 +6,11 @@ on:
   # Allows manual workflow runs from the Actions tab
   workflow_dispatch:
 
+# Add permissions needed for package publishing
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
