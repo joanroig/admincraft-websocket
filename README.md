@@ -18,8 +18,12 @@
     </a>
     <a href="https://nodejs.org">
         <img src="https://img.shields.io/badge/Node.js-339933?logo=node.js&logoColor=fff&style=flat-square" alt="Node.js badge"/>
+    </a>
     <a href="https://hub.docker.com/r/joanroig/admincraft-websocket">
         <img src="https://img.shields.io/docker/pulls/joanroig/admincraft-websocket?style=flat-square&logo=docker&label=Docker%20Pulls" alt="Docker Pulls"/>
+    </a>
+    <a href="https://github.com/joanroig/admincraft-websocket/actions/workflows/docker-build-push.yml">
+      <img src="https://img.shields.io/github/actions/workflow/status/joanroig/admincraft-websocket/docker-build-push.yml?style=flat-square&label=Build" alt="Build and Push Docker Image">
     </a>
 </p>
 
