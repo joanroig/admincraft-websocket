@@ -121,9 +121,29 @@ sudo docker compose down
 sudo docker rm -vf $(sudo docker ps -aq)
 sudo docker rmi -f $(sudo docker images -aq)
 ```
+
 ### Multi-architecture Docker Build & Push
 
-To build and push the Docker image for both amd64 and arm64 architectures:
+#### Automated Builds with GitHub Actions
+
+This repository includes a GitHub Actions workflow that automatically builds and pushes multi-architecture Docker images to Docker Hub when changes are pushed to the main branch.
+
+To set this up:
+
+1. **Add Docker Hub secrets to your GitHub repository:**
+
+   - Go to your repository's Settings > Secrets and variables > Actions
+   - Add these secrets:
+     - `DOCKERHUB_USERNAME`: Your Docker Hub username
+     - `DOCKERHUB_TOKEN`: A Docker Hub access token (create one at [Docker Hub Account Settings](https://hub.docker.com/settings/security))
+
+2. **Push changes to the main branch or manually trigger the workflow:**
+   - The workflow will automatically run when you push to the main branch
+   - You can also manually trigger it from the Actions tab in your repository
+
+#### Manual Build Process
+
+If you prefer to build and push the Docker image manually:
 
 1. **Install Docker Buildx (if not already installed):**
 
