@@ -1,6 +1,6 @@
 {
   "name": "admincraft-websocket",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "WebSocket server for handling real-time communication between Admincraft and the Minecraft server",
   "main": "server.js",
   "scripts": {
