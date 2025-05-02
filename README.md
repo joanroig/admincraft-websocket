@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/joanroig/admincraft-websocket">
-      <img alt="Admincraft WebSocket logo" src="logo.png" width="140px">
+      <img alt="Admincraft WebSocket logo" src="https://raw.githubusercontent.com/joanroig/admincraft-websocket/main/logo.png" width="140px">
   </a>
 </p>
 
