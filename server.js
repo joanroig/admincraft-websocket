@@ -13,7 +13,7 @@ const PORT = 8080;
 const CERT_PATH = "./certs/server.crt"; // Public certificate path
 const KEY_PATH = "./certs/server.key"; // Private key path
 const MAX_MESSAGES_PER_SECOND = 5; // Rate limiting configuration
-const MC_NAME = process.env.MC_NAME || "minecraft";
+const MC_NAME = process.env.MC_NAME || "minecraft"; // Minecraft container name
 if (!SECRET_KEY) {
   throw new Error("SECRET_KEY is not defined in docker-compose.yml");
 }
