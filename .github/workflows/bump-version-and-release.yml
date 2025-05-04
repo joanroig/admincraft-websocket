@@ -1,0 +1,42 @@
+name: Bump Version & Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type (major, minor, patch)"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Bump version (package.json)
+        run: |
+          BUMP_TYPE="${{ github.event.inputs.bump }}"
+          npm version $BUMP_TYPE --no-git-tag-version
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Bumped version to $VERSION"
+      - name: Commit and tag version bump
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          git add package.json package-lock.json || true
+          git commit -m "chore: bump version to $VERSION"
+          git tag v$VERSION
+      - name: Push changes and tag
+        run: |
+          git push origin HEAD:main
+          git push origin --tags
