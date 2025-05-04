@@ -5,12 +5,16 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  push:
-    branches: [main]
-  # Allows manual workflow runs from the Actions tab
   workflow_dispatch:
-
-# Add permissions needed for package publishing
+    inputs:
+      release_type:
+        description: "Release type"
+        required: true
+        default: "prerelease"
+        type: choice
+        options:
+          - release
+          - prerelease
 permissions:
   contents: write
   packages: write
@@ -18,7 +22,6 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -47,7 +50,7 @@ jobs:
         id: versioning
         run: |
           BASE_VERSION="v${{ steps.package-version.outputs.version }}"
-          
+
           # Check if tag already exists
           if git rev-parse "$BASE_VERSION" >/dev/null 2>&1; then
             # Find the highest build number for this version
@@ -70,7 +73,7 @@ jobs:
             VERSION="$BASE_VERSION"
             echo "New version: $VERSION"
           fi
-          
+
           echo "full_version=$VERSION" >> $GITHUB_OUTPUT
           echo "is_new_base_version=$([[ "$VERSION" == "$BASE_VERSION" ]] && echo "true" || echo "false")" >> $GITHUB_OUTPUT
 
@@ -139,7 +142,7 @@ jobs:
           tag_name: ${{ steps.versioning.outputs.full_version }}
           release_name: Release ${{ steps.versioning.outputs.full_version }}
           draft: false
-          prerelease: ${{ steps.versioning.outputs.is_new_base_version == 'false' }}
+          prerelease: ${{ github.event.inputs.release_type == 'prerelease' }}
           body: |
             Release ${{ steps.versioning.outputs.full_version }}
 
