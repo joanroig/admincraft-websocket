@@ -21,86 +21,50 @@ on:
       - completed
 
 jobs:
+  get-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      prerelease: ${{ steps.get_version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          VERSION="v$VERSION"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.release_type }}" == "prerelease" ]]; then
+            PRERELEASE=true
+          else
+            PRERELEASE=false
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
   build-and-push:
+    needs: get-version
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract version from package.json
-        id: package-version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Determine versioning strategy
-        id: versioning
-        run: |
-          BASE_VERSION="v${{ steps.package-version.outputs.version }}"
-
-          # Check if tag already exists
-          if git rev-parse "$BASE_VERSION" >/dev/null 2>&1; then
-            # Find the highest build number for this version
-            BUILD_PATTERN="${BASE_VERSION}-"
-            HIGHEST_BUILD=0
-            
-            for tag in $(git tag -l "${BUILD_PATTERN}*"); do
-              # Extract build number from tag
-              BUILD_NUM=$(echo $tag | sed "s|${BUILD_PATTERN}||")
-              if [[ "$BUILD_NUM" =~ ^[0-9]+$ ]] && [ $BUILD_NUM -gt $HIGHEST_BUILD ]; then
-                HIGHEST_BUILD=$BUILD_NUM
-              fi
-            done
-            
-            # Increment for the new build
-            NEW_BUILD=$((HIGHEST_BUILD + 1))
-            VERSION="${BASE_VERSION}-${NEW_BUILD}"
-            echo "New build for existing version: $VERSION"
-          else
-            VERSION="$BASE_VERSION"
-            echo "New version: $VERSION"
-          fi
-
-          echo "full_version=$VERSION" >> $GITHUB_OUTPUT
-          echo "is_new_base_version=$([[ "$VERSION" == "$BASE_VERSION" ]] && echo "true" || echo "false")" >> $GITHUB_OUTPUT
-
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Get previous tag
-        id: previoustag
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const { data: tags } = await github.rest.repos.listTags({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              per_page: 2
-            });
-            if (tags.length > 1) {
-              return tags[1].name;
-            }
-            return '';
-          result-encoding: string
-
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -109,14 +73,13 @@ jobs:
           push: true
           tags: |
             joanroig/admincraft-websocket:latest
-            joanroig/admincraft-websocket:${{ steps.versioning.outputs.full_version }}
+            joanroig/admincraft-websocket:${{ needs.get-version.outputs.version }}
             ghcr.io/${{ github.repository_owner }}/admincraft-websocket:latest
-            ghcr.io/${{ github.repository_owner }}/admincraft-websocket:${{ steps.versioning.outputs.full_version }}
+            ghcr.io/${{ github.repository_owner }}/admincraft-websocket:${{ needs.get-version.outputs.version }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/admincraft-websocket
             org.opencontainers.image.description=Admincraft WebSocket server
-            org.opencontainers.image.version=${{ steps.versioning.outputs.full_version }}
-
+            org.opencontainers.image.version=${{ needs.get-version.outputs.version }}
       - name: Update Docker Hub Description
         uses: peter-evans/dockerhub-description@v3
         with:
@@ -125,30 +88,21 @@ jobs:
           repository: joanroig/admincraft-websocket
           readme-filepath: ./README.md
           short-description: "WebSocket server to control Minecraft Bedrock Dockerized servers with Admincraft"
-
-      - name: Create Git Tag
-        run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git tag ${{ steps.versioning.outputs.full_version }}
-          git push origin ${{ steps.versioning.outputs.full_version }}
-          echo "Created and pushed tag ${{ steps.versioning.outputs.full_version }}"
-
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.versioning.outputs.full_version }}
-          release_name: Release ${{ steps.versioning.outputs.full_version }}
+          tag_name: ${{ needs.get-version.outputs.version }}
+          release_name: Release ${{ needs.get-version.outputs.version }}
           draft: false
-          prerelease: ${{ github.event.inputs.release_type == 'prerelease' }}
+          prerelease: ${{ needs.get-version.outputs.prerelease }}
           body: |
-            Release ${{ steps.versioning.outputs.full_version }}
+            Release ${{ needs.get-version.outputs.version }}
 
             Docker images available at:
-            - Docker Hub: [joanroig/admincraft-websocket:${{ steps.versioning.outputs.full_version }}](https://hub.docker.com/r/joanroig/admincraft-websocket/tags?name=${{ steps.versioning.outputs.full_version }})
-            - GitHub Packages: [ghcr.io/${{ github.repository_owner }}/admincraft-websocket:${{ steps.versioning.outputs.full_version }}](https://github.com/${{ github.repository_owner }}/admincraft-websocket/pkgs/container/admincraft-websocket)
+            - Docker Hub: [joanroig/admincraft-websocket:${{ needs.get-version.outputs.version }}](https://hub.docker.com/r/joanroig/admincraft-websocket/tags?name=${{ needs.get-version.outputs.version }})
+            - GitHub Packages: [ghcr.io/${{ github.repository_owner }}/admincraft-websocket:${{ needs.get-version.outputs.version }}](https://github.com/${{ github.repository_owner }}/admincraft-websocket/pkgs/container/admincraft-websocket)
 
-            Full Changelog: https://github.com/${{ github.repository_owner }}/admincraft-websocket/compare/${{ steps.previoustag.outputs.result }}...${{ steps.versioning.outputs.full_version }}
+            Full Changelog: https://github.com/${{ github.repository_owner }}/admincraft-websocket/compare/HEAD~1...${{ needs.get-version.outputs.version }}
