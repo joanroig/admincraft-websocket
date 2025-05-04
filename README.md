@@ -22,8 +22,8 @@
     <a href="https://hub.docker.com/r/joanroig/admincraft-websocket">
         <img src="https://img.shields.io/docker/pulls/joanroig/admincraft-websocket?style=flat-square&logo=docker&label=Docker%20Pulls" alt="Docker Pulls"/>
     </a>
-    <a href="https://github.com/joanroig/admincraft-websocket/actions/workflows/docker-build-push.yml">
-      <img src="https://img.shields.io/github/actions/workflow/status/joanroig/admincraft-websocket/docker-build-push.yml?style=flat-square&label=Build&logo=github" alt="Build and Push Docker Image">
+    <a href="https://github.com/joanroig/admincraft-websocket/actions/workflows/build-and-release-docker-image.yml">
+      <img src="https://img.shields.io/github/actions/workflow/status/joanroig/admincraft-websocket/build-and-release-docker-image.yml?style=flat-square&label=Build&logo=github" alt="Build and Push Docker Image">
     </a>
 </p>
 
