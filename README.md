@@ -13,18 +13,10 @@
 </p>
 
 <p align="center">
-    <a href="https://github.com/joanroig/admincraft">
-        <img src="https://img.shields.io/badge/Admincraft-339933?style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABfUlEQVR4AW2SvU5CQRCFJ2ZbKPCHiDWGhsJYGOgNnQVRW1ueQSsL34HW2khhR+i1MhY2RGswkgsFPIDcb+BsFuJJyHLn58ycmQnPt5d/k+ncwO9s4W+9emTbtnG2sMpeIfo/v0f+Bv6USwX7+BrHAJJ3auf2/vLoNgLLpbmTiRzCcTa0gCHbP7PKrOdEB7tFZ7fXXkz27zX6b0N/W42a24O3Oh14YPvhybqdlhOl1fTNuy0xxIo5endX1un2nQRIJ1XpBll0RrIk+wzQAzsOkiG5v266TclAM6EbyfMZmI1ii2ky3bUaxdhJvbrqSpIoGNT+fzOADLTXA5S0dB5BU+Y3yQNSJ50AfesmwMYMdAepE0h7mriSbC6bvCCHhiKnVgUZO9cNcFDgsNm2n3wjQXp1gemp4ju9uLHJcBCLQHhyXPFkthdI5g+BGFU5XmBuS6E1aisuQYw6HkHdUQAZuomNS9wO0mEB2bR/ChEreU6gagTq7jUkna2QrlhFl4X7LZs6I3I3AAAAAElFTkSuQmCC" alt="Admincraft badge"/>
-    </a>
-    <a href="https://nodejs.org">
-        <img src="https://img.shields.io/badge/Node.js-339933?logo=node.js&logoColor=fff&style=flat-square" alt="Node.js badge"/>
-    </a>
-    <a href="https://hub.docker.com/r/joanroig/admincraft-websocket">
-        <img src="https://img.shields.io/docker/pulls/joanroig/admincraft-websocket?style=flat-square&logo=docker&label=Docker%20Pulls" alt="Docker Pulls"/>
-    </a>
-    <a href="https://github.com/joanroig/admincraft-websocket/actions/workflows/build-and-release-docker-image.yml">
-      <img src="https://img.shields.io/github/actions/workflow/status/joanroig/admincraft-websocket/build-and-release-docker-image.yml?style=flat-square&label=Build&logo=github" alt="Build and Push Docker Image">
-    </a>
+    <a href="https://github.com/joanroig/admincraft"><img src="https://img.shields.io/badge/Admincraft-339933?style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABfUlEQVR4AW2SvU5CQRCFJ2ZbKPCHiDWGhsJYGOgNnQVRW1ueQSsL34HW2khhR+i1MhY2RGswkgsFPIDcb+BsFuJJyHLn58ycmQnPt5d/k+ncwO9s4W+9emTbtnG2sMpeIfo/v0f+Bv6USwX7+BrHAJJ3auf2/vLoNgLLpbmTiRzCcTa0gCHbP7PKrOdEB7tFZ7fXXkz27zX6b0N/W42a24O3Oh14YPvhybqdlhOl1fTNuy0xxIo5endX1un2nQRIJ1XpBll0RrIk+wzQAzsOkiG5v266TclAM6EbyfMZmI1ii2ky3bUaxdhJvbrqSpIoGNT+fzOADLTXA5S0dB5BU+Y3yQNSJ50AfesmwMYMdAepE0h7mriSbC6bvCCHhiKnVgUZO9cNcFDgsNm2n3wjQXp1gemp4ju9uLHJcBCLQHhyXPFkthdI5g+BGFU5XmBuS6E1aisuQYw6HkHdUQAZuomNS9wO0mEB2bR/ChEreU6gagTq7jUkna2QrlhFl4X7LZs6I3I3AAAAAElFTkSuQmCC" alt="Admincraft badge"/></a>
+    <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-339933?logo=node.js&logoColor=fff&style=flat-square" alt="Node.js badge"/></a>
+    <a href="https://hub.docker.com/r/joanroig/admincraft-websocket"><img src="https://img.shields.io/docker/pulls/joanroig/admincraft-websocket?style=flat-square&logo=docker&label=Docker%20Pulls" alt="Docker Pulls"/></a>
+    <a href="https://github.com/joanroig/admincraft-websocket/actions/workflows/build-and-release-docker-image.yml"><img src="https://img.shields.io/github/actions/workflow/status/joanroig/admincraft-websocket/build-and-release-docker-image.yml?style=flat-square&label=Build&logo=github" alt="Build and Push Docker Image"></a>
 </p>
 
 ## What is Admincraft WebSocket?
