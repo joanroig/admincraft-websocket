@@ -44,7 +44,7 @@ You can set up your server following [the server setup guide from Admincraft](ht
 
 1. **Set up your environment:**
 
-   Get the `docker-compose.yml` file and edit it with your secret key:
+   Get the [docker-compose.yml](https://github.com/joanroig/admincraft/blob/main/docs/server/docker-compose.yml) file and edit it with your secret key:
 
    `SECRET_KEY=your_secret_key_here`
 
