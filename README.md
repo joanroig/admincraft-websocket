@@ -38,6 +38,12 @@ To open an issue, please use the [Admincraft's issues page](https://github.com/j
 
 To run Admincraft WebSocket, ensure you have the [Docker](https://www.docker.com/) installed.
 
+### Network security
+
+This server executes commands on your Minecraft container, so port `8080` should never be reachable from the internet unprotected. The recommended setup is to reach it over [Tailscale](https://tailscale.com), which places your devices on a private encrypted network: keep `USE_SSL` set to `"false"`, leave the port closed in your cloud firewall, and connect Admincraft to the server's Tailscale address with an empty certificate field.
+
+If you do need the port publicly reachable, enable `USE_SSL` and generate certificates as described in the [server setup guide](https://github.com/joanroig/admincraft/blob/main/docs/server/SERVER_SETUP.md#alternative-public-access-with-self-signed-ssl). Never expose port `8080` with SSL disabled: Admincraft falls back to an unencrypted connection when no certificate is provided, sending your secret key and every command in clear text.
+
 ### Installation
 
 You can set up your server following [the server setup guide from Admincraft](https://github.com/joanroig/admincraft/blob/main/docs/server/SERVER_SETUP.md), in summary you need to:
