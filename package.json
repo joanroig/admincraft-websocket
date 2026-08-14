@@ -1,6 +1,6 @@
 {
   "name": "admincraft-websocket",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "WebSocket server for handling real-time communication between Admincraft and the Minecraft server",
   "main": "server.js",
   "scripts": {
@@ -24,7 +24,7 @@
     "url": "https://github.com/joanroig/admincraft-websocket.git"
   },
   "author": "Joan Roig Segura",
-  "license": "GPLv3",
+  "license": "SEE LICENSE IN LICENSE.md",
   "bugs": {
     "url": "https://github.com/joanroig/admincraft-websocket/issues"
   },
