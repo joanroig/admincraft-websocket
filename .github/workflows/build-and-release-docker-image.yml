@@ -78,7 +78,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/admincraft-websocket:${{ needs.get-version.outputs.version }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/admincraft-websocket
-            org.opencontainers.image.description=Admincraft WebSocket server
+            org.opencontainers.image.description=Admincraft bridge for Minecraft Bedrock and Java servers
             org.opencontainers.image.version=${{ needs.get-version.outputs.version }}
       - name: Update Docker Hub Description
         uses: peter-evans/dockerhub-description@v3
@@ -87,7 +87,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: joanroig/admincraft-websocket
           readme-filepath: ./README.md
-          short-description: "WebSocket server to control Minecraft Bedrock Dockerized servers with Admincraft"
+          short-description: "WebSocket bridge to control Minecraft Bedrock and Java servers with Admincraft"
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
