@@ -9,7 +9,7 @@
 </h1>
 
 <p align="center">
-  WebSocket server to control Minecraft Bedrock Dockerized servers with <a href="https://github.com/joanroig/admincraft">Admincraft</a>.
+  WebSocket bridge to control Minecraft Bedrock and Java servers with <a href="https://github.com/joanroig/admincraft">Admincraft</a>.
 </p>
 
 <p align="center">
@@ -21,12 +21,12 @@
 
 ## What is Admincraft WebSocket?
 
-Admincraft WebSocket allows remote control of Minecraft Bedrock servers hosted in Docker. It uses WebSocket technology to provide secure, real-time communication with the Minecraft server, executing commands and monitoring server activity from anywhere.
+Admincraft WebSocket allows remote control of Minecraft Bedrock and Java Edition servers. It exposes one authenticated WebSocket interface to Admincraft, then uses the Bedrock Docker console or Java RCON internally. Docker integration supplies live logs and lifecycle controls.
 
 ### Current Project Status
 
 - Designed to work alongside [Admincraft](https://github.com/joanroig/admincraft) for GUI-based server management.
-- Currently optimized for use with Oracle Always Free, using a server created with [docker-minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server/tree/master).
+- Bedrock is optimized for [docker-minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server); Java is optimized for [docker-minecraft-server](https://github.com/itzg/docker-minecraft-server).
 
 ## Issues
 
@@ -45,6 +45,27 @@ This server executes commands on your Minecraft container, so port `8080` should
 If you do need the port publicly reachable, enable `USE_SSL` and generate certificates as described in the [server setup guide](https://github.com/joanroig/admincraft/blob/main/docs/server/SERVER_SETUP.md#alternative-public-access-with-self-signed-ssl). Never expose port `8080` with SSL disabled: Admincraft falls back to an unencrypted connection when no certificate is provided, sending your secret key and every command in clear text.
 
 ### Installation
+
+Choose the setup for your edition:
+
+- [Bedrock Edition setup](https://github.com/joanroig/admincraft/blob/main/docs/server/SERVER_SETUP.md)
+- [Java Edition setup](https://github.com/joanroig/admincraft/blob/main/docs/getting-started/java-server.md)
+
+The bridge configuration variables are:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `SECRET_KEY` | required | Authenticates Admincraft clients |
+| `SERVER_TYPE` | `bedrock` | `bedrock` or `java` |
+| `MC_NAME` | `minecraft` | Minecraft Docker container name |
+| `RCON_HOST` | `MC_NAME` | Java RCON hostname |
+| `RCON_PORT` | `25575` | Java RCON port |
+| `RCON_PASSWORD` | required for Java | Password configured on the Java server |
+| `DOCKER_ENABLED` | `true` | Set to `false` for Java RCON commands without Docker logs or restart |
+| `USE_SSL` | `false` | Serve the WebSocket with the mounted TLS certificate |
+| `PORT` | `8080` | WebSocket listen port |
+
+Never publish the Java RCON port. Keep it inside the Docker network and expose only the protected Admincraft WebSocket endpoint.
 
 You can set up your server following [the server setup guide from Admincraft](https://github.com/joanroig/admincraft/blob/main/docs/server/SERVER_SETUP.md), in summary you need to:
 
@@ -171,7 +192,7 @@ If you prefer to build and push the Docker image manually:
 
 ### Architecture
 
-The Admincraft WebSocket Server operates alongside a Minecraft Bedrock server hosted in Docker. All arechitecture details can be found [here](https://github.com/joanroig/admincraft/blob/main/docs/server/SERVER_SETUP.md#architecture).
+The Admincraft WebSocket Server operates alongside a Minecraft Bedrock or Java server. Architecture details can be found in the [Bedrock setup guide](https://github.com/joanroig/admincraft/blob/main/docs/server/SERVER_SETUP.md#architecture) and [Java setup guide](https://github.com/joanroig/admincraft/blob/main/docs/getting-started/java-server.md).
 
 ## License
 
