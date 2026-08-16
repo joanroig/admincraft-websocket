@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const { EventEmitter } = require("node:events");
 const test = require("node:test");
 const {
   createBedrockBackend,
@@ -29,6 +30,28 @@ test("Bedrock commands use argument-safe docker execution", async () => {
   assert.deepEqual(invocation, {
     file: "docker",
     args: ["exec", "bedrock-server", "send-command", "give @a stone 1"],
+  });
+});
+
+test("log streaming follows only lines produced after connection", () => {
+  let invocation;
+  const child = new EventEmitter();
+  child.stdout = new EventEmitter();
+  child.stderr = new EventEmitter();
+  const backend = createBedrockBackend(
+    { containerName: "bedrock-server" },
+    {
+      spawn(file, args) {
+        invocation = { file, args };
+        return child;
+      },
+    },
+  );
+
+  assert.equal(backend.followLogs(() => {}, () => {}, () => {}), child);
+  assert.deepEqual(invocation, {
+    file: "docker",
+    args: ["logs", "--follow", "--tail", "0", "bedrock-server"],
   });
 });
 

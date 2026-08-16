@@ -38,7 +38,16 @@ function dockerTools(containerName, enabled, dependencies) {
 
     followLogs(onData, onError, onClose) {
       if (!enabled) return null;
-      const process = spawnImpl("docker", ["logs", "-f", containerName]);
+      // Only forward lines produced after this client connected. Replaying the
+      // container's full log polluted every new app session with old command
+      // replies and made the console jump while thousands of lines arrived.
+      const process = spawnImpl("docker", [
+        "logs",
+        "--follow",
+        "--tail",
+        "0",
+        containerName,
+      ]);
       process.stdout.on("data", (data) => onData(data.toString()));
       process.stderr.on("data", (data) => onError(data.toString()));
       process.on("close", onClose);
