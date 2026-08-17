@@ -4,8 +4,39 @@ const test = require("node:test");
 const {
   createBedrockBackend,
   createJavaBackend,
+  formatDuration,
+  parseObservedState,
   validateMessage,
 } = require("../minecraft-backend");
+
+test("structured observations parse Bedrock and Java world state", () => {
+  assert.deepEqual(
+    parseObservedState(
+      "bedrock",
+      "Daytime is 7076",
+      "There are 2/10 players online: Alex, Steve",
+    ),
+    {
+      daytime: 7076,
+      playersOnline: 2,
+      playerLimit: 10,
+      onlinePlayers: ["Alex", "Steve"],
+    },
+  );
+  assert.deepEqual(
+    parseObservedState(
+      "java",
+      "The time is 12000",
+      "There are 0 of a max of 20 players online:",
+    ),
+    {
+      daytime: 12000,
+      playersOnline: 0,
+      playerLimit: 20,
+      onlinePlayers: [],
+    },
+  );
+});
 
 test("accepts Minecraft syntax without allowing control characters", () => {
   assert.equal(validateMessage("give @a minecraft:stone 1"), true);
@@ -33,7 +64,7 @@ test("Bedrock commands use argument-safe docker execution", async () => {
   });
 });
 
-test("log streaming follows only lines produced after connection", () => {
+test("legacy log streaming follows only lines produced after connection", () => {
   let invocation;
   const child = new EventEmitter();
   child.stdout = new EventEmitter();
@@ -53,6 +84,122 @@ test("log streaming follows only lines produced after connection", () => {
     file: "docker",
     args: ["logs", "--follow", "--tail", "0", "bedrock-server"],
   });
+});
+
+test("protocol v2 log streaming includes a bounded timestamped backlog", () => {
+  let invocation;
+  const child = new EventEmitter();
+  child.stdout = new EventEmitter();
+  child.stderr = new EventEmitter();
+  const backend = createBedrockBackend(
+    { containerName: "bedrock-server" },
+    {
+      spawn(file, args) {
+        invocation = { file, args };
+        return child;
+      },
+    },
+  );
+
+  backend.followLogs(() => {}, () => {}, () => {}, {
+    tail: 250,
+    timestamps: true,
+  });
+  assert.deepEqual(invocation, {
+    file: "docker",
+    args: [
+      "logs",
+      "--follow",
+      "--tail",
+      "250",
+      "--timestamps",
+      "bedrock-server",
+    ],
+  });
+});
+
+test("initial log history is read as a bounded timestamped snapshot", async () => {
+  let invocation;
+  const backend = createBedrockBackend(
+    { containerName: "bedrock-server" },
+    {
+      execFile(file, args, callback) {
+        invocation = { file, args };
+        callback(null, "2026-08-17T10:00:00Z Server ready\n", "");
+      },
+    },
+  );
+
+  const history = await backend.readLogs({ tail: 250, timestamps: true });
+  assert.deepEqual(invocation, {
+    file: "docker",
+    args: [
+      "logs",
+      "--tail",
+      "250",
+      "--timestamps",
+      "bedrock-server",
+    ],
+  });
+  assert.deepEqual(history, {
+    stdout: "2026-08-17T10:00:00Z Server ready\n",
+    stderr: "",
+  });
+});
+
+test("Docker-backed servers report status and support lifecycle controls", async () => {
+  const invocations = [];
+  const backend = createBedrockBackend(
+    { containerName: "bedrock-server" },
+    {
+      execFile(file, args, callback) {
+        invocations.push({ file, args });
+        callback(null, args[0] === "inspect" ? "running\n" : "", "");
+      },
+    },
+  );
+
+  assert.equal(await backend.status(), "running");
+  await backend.start();
+  await backend.stop();
+  await backend.restart();
+  assert.deepEqual(invocations, [
+    {
+      file: "docker",
+      args: [
+        "inspect",
+        "--format",
+        "{{.State.Status}}",
+        "bedrock-server",
+      ],
+    },
+    { file: "docker", args: ["start", "bedrock-server"] },
+    { file: "docker", args: ["stop", "bedrock-server"] },
+    { file: "docker", args: ["restart", "bedrock-server"] },
+  ]);
+});
+
+test("Docker health uses the container healthcheck and uptime is compact", async () => {
+  const invocations = [];
+  const backend = createBedrockBackend(
+    { containerName: "bedrock-server" },
+    {
+      execFile(file, args, callback) {
+        invocations.push({ file, args });
+        callback(null, "healthy\n", "");
+      },
+    },
+  );
+
+  assert.equal(await backend.health(), "healthy");
+  assert.deepEqual(invocations[0].args, [
+    "inspect",
+    "--format",
+    "{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}",
+    "bedrock-server",
+  ]);
+  assert.equal(formatDuration(90061), "1d 1h");
+  assert.equal(formatDuration(65), "1m 5s");
 });
 
 test("Java commands use RCON and close the connection", async () => {
@@ -94,7 +241,20 @@ test("Java commands use RCON and close the connection", async () => {
   assert.equal(command, "list");
   assert.match(response, /20 players/);
   assert.equal(ended, true);
-  assert.deepEqual(backend.capabilities, ["commands"]);
+  assert.equal(
+    await backend.status(),
+    "unavailable (Docker management is disabled)",
+  );
+  assert.deepEqual(backend.capabilities, [
+    "commands",
+    "status",
+    "version",
+    "help",
+    "health",
+    "info",
+    "uptime",
+    "state",
+  ]);
 });
 
 test("Java RCON requires a password", () => {

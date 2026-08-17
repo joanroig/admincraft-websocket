@@ -55,17 +55,53 @@ The bridge configuration variables are:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `SECRET_KEY` | required | Authenticates Admincraft clients |
+| `SECRET_KEY` | optional legacy admin key | Backwards-compatible key with full command and lifecycle access |
+| `ADMIN_SECRET_KEY` | optional | Full Minecraft command and container lifecycle access; takes precedence over `SECRET_KEY` |
+| `COMMAND_SECRET_KEY` | optional | Minecraft commands and diagnostics, without container start/stop/restart |
+| `READ_ONLY_SECRET_KEY` | optional | Logs, status, health, version, uptime, and diagnostics only |
 | `SERVER_TYPE` | `bedrock` | `bedrock` or `java` |
 | `MC_NAME` | `minecraft` | Minecraft Docker container name |
 | `RCON_HOST` | `MC_NAME` | Java RCON hostname |
 | `RCON_PORT` | `25575` | Java RCON port |
 | `RCON_PASSWORD` | required for Java | Password configured on the Java server |
-| `DOCKER_ENABLED` | `true` | Set to `false` for Java RCON commands without Docker logs or restart |
+| `DOCKER_ENABLED` | `true` | Set to `false` for Java RCON commands without Docker logs or container start/stop/restart controls |
 | `USE_SSL` | `false` | Serve the WebSocket with the mounted TLS certificate |
 | `PORT` | `8080` | WebSocket listen port |
 
-Never publish the Java RCON port. Keep it inside the Docker network and expose only the protected Admincraft WebSocket endpoint.
+Configure at least one bridge access key. Use a different random value for each
+scope you enable, and give each Admincraft profile the least powerful key it
+needs. Never publish the Java RCON port. Keep it inside the Docker network and
+expose only the protected Admincraft WebSocket endpoint.
+
+| Access key | Read logs and diagnostics | Minecraft commands | Start, stop, restart container |
+| --- | --- | --- | --- |
+| `READ_ONLY_SECRET_KEY` | Yes | No | No |
+| `COMMAND_SECRET_KEY` | Yes | Yes | No |
+| `ADMIN_SECRET_KEY` or legacy `SECRET_KEY` | Yes | Yes | Yes |
+
+### Admincraft bridge commands
+
+The app exposes the commands allowed by the connected key in terminal
+completion:
+
+| Command | Result |
+| --- | --- |
+| `admincraft help` | Lists commands allowed by the current key |
+| `admincraft status` | Minecraft container state |
+| `admincraft health` | Docker healthcheck state, or Java RCON reachability when Docker is disabled |
+| `admincraft info` | Bridge version, protocol, permission, edition, container, status, uptime, and capabilities |
+| `admincraft uptime` | Time since the Minecraft container started |
+| `admincraft version` | Installed Admincraft WebSocket version |
+| `admincraft logs [count]` | Replays 1–1000 recent server log lines; defaults to 250 |
+| `admincraft start-server` | Starts the Minecraft container (admin key only) |
+| `admincraft stop-server` | Stops the Minecraft container (admin key only) |
+| `admincraft restart-server` | Restarts the Minecraft container (admin key only) |
+
+Protocol-v2 clients also receive a capability list, a bounded log snapshot
+before the live stream, and structured container, world-time, and player-count
+changes. Admincraft uses these events to hide unavailable controls and keep
+its overview and diagnostics current without injecting status command replies
+into the visible console.
 
 You can set up your server following [the server setup guide from Admincraft](https://github.com/joanroig/admincraft/blob/main/docs/server/SERVER_SETUP.md), in summary you need to:
 

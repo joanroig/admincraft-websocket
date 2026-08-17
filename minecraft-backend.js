@@ -11,7 +11,7 @@ function validateMessage(message) {
   );
 }
 
-function runFile(execFileImpl, file, args) {
+function runFileOutput(execFileImpl, file, args) {
   return new Promise((resolve, reject) => {
     execFileImpl(file, args, (error, stdout = "", stderr = "") => {
       if (error) {
@@ -19,9 +19,57 @@ function runFile(execFileImpl, file, args) {
         reject(new Error(detail));
         return;
       }
-      resolve(stdout.toString());
+      resolve({ stdout: stdout.toString(), stderr: stderr.toString() });
     });
   });
+}
+
+async function runFile(execFileImpl, file, args) {
+  const output = await runFileOutput(execFileImpl, file, args);
+  return output.stdout;
+}
+
+function formatDuration(totalSeconds) {
+  if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return "unknown";
+  const units = [
+    [86400, "d"],
+    [3600, "h"],
+    [60, "m"],
+    [1, "s"],
+  ];
+  let remaining = Math.floor(totalSeconds);
+  const parts = [];
+  for (const [seconds, label] of units) {
+    const value = Math.floor(remaining / seconds);
+    if (value > 0 || (label === "s" && parts.length === 0)) {
+      parts.push(`${value}${label}`);
+      remaining %= seconds;
+    }
+    if (parts.length === 2) break;
+  }
+  return parts.join(" ");
+}
+
+function parseObservedState(edition, daytimeOutput, playersOutput) {
+  const daytimePattern =
+    edition === "java" ? /The time is (\d+)/u : /Daytime is (\d+)/u;
+  const playersPattern =
+    edition === "java"
+      ? /There are (\d+) of a max of (\d+) players online(?::\s*(.*))?/u
+      : /There are (\d+)\/(\d+) players online(?::\s*(.*))?/u;
+  const daytimeMatch = daytimePattern.exec(daytimeOutput);
+  const playersMatch = playersPattern.exec(playersOutput);
+  const result = {};
+  if (daytimeMatch) result.daytime = Number.parseInt(daytimeMatch[1], 10);
+  if (playersMatch) {
+    result.playersOnline = Number.parseInt(playersMatch[1], 10);
+    result.playerLimit = Number.parseInt(playersMatch[2], 10);
+    result.onlinePlayers = (playersMatch[3] || "")
+      .split(",")
+      .map((player) => player.trim())
+      .filter(Boolean);
+  }
+  return result;
 }
 
 function dockerTools(containerName, enabled, dependencies) {
@@ -29,6 +77,62 @@ function dockerTools(containerName, enabled, dependencies) {
   const spawnImpl = dependencies.spawn || spawn;
 
   return {
+    async status() {
+      if (!enabled) {
+        return "unavailable (Docker management is disabled)";
+      }
+      const output = await runFile(execFileImpl, "docker", [
+        "inspect",
+        "--format",
+        "{{.State.Status}}",
+        containerName,
+      ]);
+      return output.trim() || "unknown";
+    },
+
+    async health() {
+      if (!enabled) {
+        return "unavailable (Docker management is disabled)";
+      }
+      const output = await runFile(execFileImpl, "docker", [
+        "inspect",
+        "--format",
+        "{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}",
+        containerName,
+      ]);
+      return output.trim() || "unknown";
+    },
+
+    async uptime() {
+      if (!enabled) {
+        return "unavailable (Docker management is disabled)";
+      }
+      const output = await runFile(execFileImpl, "docker", [
+        "inspect",
+        "--format",
+        "{{.State.StartedAt}}",
+        containerName,
+      ]);
+      const startedAt = Date.parse(output.trim());
+      return Number.isNaN(startedAt)
+        ? "unknown"
+        : formatDuration((Date.now() - startedAt) / 1000);
+    },
+
+    async start() {
+      if (!enabled) {
+        throw new Error("Docker management is disabled for this bridge.");
+      }
+      await runFile(execFileImpl, "docker", ["start", containerName]);
+    },
+
+    async stop() {
+      if (!enabled) {
+        throw new Error("Docker management is disabled for this bridge.");
+      }
+      await runFile(execFileImpl, "docker", ["stop", containerName]);
+    },
+
     async restart() {
       if (!enabled) {
         throw new Error("Docker management is disabled for this bridge.");
@@ -36,22 +140,38 @@ function dockerTools(containerName, enabled, dependencies) {
       await runFile(execFileImpl, "docker", ["restart", containerName]);
     },
 
-    followLogs(onData, onError, onClose) {
+    followLogs(onData, onError, onClose, options = {}) {
       if (!enabled) return null;
-      // Only forward lines produced after this client connected. Replaying the
-      // container's full log polluted every new app session with old command
-      // replies and made the console jump while thousands of lines arrived.
-      const process = spawnImpl("docker", [
+      const tail = Number.isInteger(options.tail)
+        ? Math.max(0, Math.min(options.tail, 1000))
+        : 0;
+      const args = [
         "logs",
         "--follow",
         "--tail",
-        "0",
-        containerName,
-      ]);
+        String(tail),
+      ];
+      // Protocol v2 uses Docker's stable per-line timestamp as an event id.
+      // That lets a reconnect replay a useful tail while clients discard the
+      // overlap they have already saved. Legacy clients retain --tail 0.
+      if (options.timestamps) args.push("--timestamps");
+      args.push(containerName);
+      const process = spawnImpl("docker", args);
       process.stdout.on("data", (data) => onData(data.toString()));
       process.stderr.on("data", (data) => onError(data.toString()));
       process.on("close", onClose);
       return process;
+    },
+
+    async readLogs(options = {}) {
+      if (!enabled) return { stdout: "", stderr: "" };
+      const tail = Number.isInteger(options.tail)
+        ? Math.max(0, Math.min(options.tail, 1000))
+        : 250;
+      const args = ["logs", "--tail", String(tail)];
+      if (options.timestamps) args.push("--timestamps");
+      args.push(containerName);
+      return runFileOutput(execFileImpl, "docker", args);
     },
   };
 }
@@ -61,18 +181,52 @@ function createBedrockBackend(config, dependencies = {}) {
   const docker = dockerTools(containerName, true, dependencies);
   const execFileImpl = dependencies.execFile || execFile;
 
+  async function backendExecute(command) {
+    return runFile(execFileImpl, "docker", [
+      "exec",
+      containerName,
+      "send-command",
+      command,
+    ]);
+  }
+
   return {
     edition: "bedrock",
-    capabilities: ["commands", "logs", "restart"],
-    execute(command) {
-      return runFile(execFileImpl, "docker", [
-        "exec",
-        containerName,
-        "send-command",
-        command,
+    capabilities: [
+      "commands",
+      "logs",
+      "status",
+      "version",
+      "help",
+      "health",
+      "info",
+      "uptime",
+      "state",
+      "start",
+      "stop",
+      "restart",
+    ],
+    execute: backendExecute,
+    async observeState() {
+      const status = await docker.status();
+      if (status !== "running") return { state: status };
+      const [daytime, players] = await Promise.all([
+        backendExecute("time query daytime"),
+        backendExecute("list"),
       ]);
+      return {
+        state: status,
+        ...parseObservedState("bedrock", daytime, players),
+      };
     },
+    start: docker.start,
+    stop: docker.stop,
     restart: docker.restart,
+    status: docker.status,
+    health: docker.health,
+    uptime: docker.uptime,
+    containerName,
+    readLogs: docker.readLogs,
     followLogs: docker.followLogs,
   };
 }
@@ -87,25 +241,58 @@ function createJavaBackend(config, dependencies = {}) {
     throw new Error("RCON_PASSWORD is required when SERVER_TYPE is java.");
   }
 
+  async function backendExecute(command) {
+    const client = await Rcon.connect({
+      host: config.rconHost || containerName,
+      port: config.rconPort || 25575,
+      password: config.rconPassword,
+    });
+    try {
+      return (await client.send(command)) || "";
+    } finally {
+      client.end();
+    }
+  }
+
   return {
     edition: "java",
     capabilities: [
       "commands",
-      ...(dockerEnabled ? ["logs", "restart"] : []),
+      "status",
+      "version",
+      "help",
+      "health",
+      "info",
+      "uptime",
+      "state",
+      ...(dockerEnabled ? ["logs", "start", "stop", "restart"] : []),
     ],
-    async execute(command) {
-      const client = await Rcon.connect({
-        host: config.rconHost || containerName,
-        port: config.rconPort || 25575,
-        password: config.rconPassword,
-      });
-      try {
-        return (await client.send(command)) || "";
-      } finally {
-        client.end();
-      }
+    execute: backendExecute,
+    async observeState() {
+      const status = dockerEnabled ? await docker.status() : "reachable";
+      if (dockerEnabled && status !== "running") return { state: status };
+      const [daytime, players] = await Promise.all([
+        backendExecute("time query daytime"),
+        backendExecute("list"),
+      ]);
+      return {
+        state: status,
+        ...parseObservedState("java", daytime, players),
+      };
     },
+    start: docker.start,
+    stop: docker.stop,
     restart: docker.restart,
+    status: docker.status,
+    health: dockerEnabled
+      ? docker.health
+      : async () => {
+          await backendExecute("list");
+          return "reachable over RCON";
+        },
+    uptime: docker.uptime,
+    containerName,
+    readLogs: docker.readLogs,
     followLogs: docker.followLogs,
   };
 }
@@ -125,4 +312,6 @@ module.exports = {
   createBedrockBackend,
   createJavaBackend,
   validateMessage,
+  formatDuration,
+  parseObservedState,
 };
