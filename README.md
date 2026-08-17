@@ -232,4 +232,7 @@ The Admincraft WebSocket Server operates alongside a Minecraft Bedrock or Java s
 
 ## License
 
-Admincraft WebSocket version 1.1.0 and later is licensed under the [PolyForm Shield License 1.0.0](LICENSE.md). See [LICENSING.md](LICENSING.md) for version details.
+Admincraft WebSocket version 1.1.0 and later is source-available under the
+[PolyForm Shield License 1.0.0](https://github.com/joanroig/admincraft-websocket/blob/main/LICENSE.md).
+See [LICENSING.md](https://github.com/joanroig/admincraft-websocket/blob/main/LICENSING.md)
+for the version boundary and third-party components.
