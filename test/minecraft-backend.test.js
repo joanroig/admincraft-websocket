@@ -5,6 +5,7 @@ const {
   createBedrockBackend,
   createJavaBackend,
   formatDuration,
+  normalizeDifficulty,
   parseObservedState,
   validateMessage,
 } = require("../minecraft-backend");
@@ -36,6 +37,45 @@ test("structured observations parse Bedrock and Java world state", () => {
       onlinePlayers: [],
     },
   );
+});
+
+test("difficulty values normalize from names, aliases, and numeric levels", () => {
+  assert.equal(normalizeDifficulty("normal"), "normal");
+  assert.equal(normalizeDifficulty("H"), "hard");
+  assert.equal(normalizeDifficulty("0"), "peaceful");
+  assert.equal(normalizeDifficulty("invalid"), null);
+});
+
+test("Bedrock state reads difficulty without issuing an invalid command", async () => {
+  const commands = [];
+  const backend = createBedrockBackend(
+    { containerName: "bedrock-server" },
+    {
+      execFile(file, args, callback) {
+        if (args[0] === "inspect") return callback(null, "running\n", "");
+        if (args[0] === "logs") {
+          return callback(
+            null,
+            "[INFO] Daytime is 7076\n[INFO] There are 0/10 players online:\n",
+            "",
+          );
+        }
+        if (args.includes("cat")) {
+          return callback(null, "server-name=Test\ndifficulty=normal\n", "");
+        }
+        const command = args.at(-1);
+        commands.push(command);
+        return callback(null, "", "");
+      },
+      waitForCommandOutput: async () => {},
+    },
+  );
+
+  const state = await backend.observeState();
+  assert.equal(state.daytime, 7076);
+  assert.equal(state.playersOnline, 0);
+  assert.equal(state.difficulty, "normal");
+  assert.deepEqual(commands, ["time query daytime", "list"]);
 });
 
 test("accepts Minecraft syntax without allowing control characters", () => {

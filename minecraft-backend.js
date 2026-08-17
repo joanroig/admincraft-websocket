@@ -57,8 +57,16 @@ function parseObservedState(edition, daytimeOutput, playersOutput) {
     edition === "java"
       ? /There are (\d+) of a max of (\d+) players online(?::\s*(.*))?/u
       : /There are (\d+)\/(\d+) players online(?::\s*(.*))?/u;
-  const daytimeMatch = daytimePattern.exec(daytimeOutput);
-  const playersMatch = playersPattern.exec(playersOutput);
+  const lastMatch = (pattern, output) => {
+    const lines = output.split(/\r?\n/u);
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+      const match = pattern.exec(lines[index]);
+      if (match) return match;
+    }
+    return null;
+  };
+  const daytimeMatch = lastMatch(daytimePattern, daytimeOutput);
+  const playersMatch = lastMatch(playersPattern, playersOutput);
   const result = {};
   if (daytimeMatch) result.daytime = Number.parseInt(daytimeMatch[1], 10);
   if (playersMatch) {
@@ -70,6 +78,31 @@ function parseObservedState(edition, daytimeOutput, playersOutput) {
       .filter(Boolean);
   }
   return result;
+}
+
+function normalizeDifficulty(value) {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toLowerCase();
+  const aliases = {
+    "0": "peaceful",
+    p: "peaceful",
+    peaceful: "peaceful",
+    "1": "easy",
+    e: "easy",
+    easy: "easy",
+    "2": "normal",
+    n: "normal",
+    normal: "normal",
+    "3": "hard",
+    h: "hard",
+    hard: "hard",
+  };
+  return aliases[normalized] || null;
+}
+
+function difficultyFromCommand(command) {
+  const match = /^\/?difficulty\s+(\S+)\s*$/iu.exec(command);
+  return match ? normalizeDifficulty(match[1]) : null;
 }
 
 function dockerTools(containerName, enabled, dependencies) {
@@ -140,6 +173,31 @@ function dockerTools(containerName, enabled, dependencies) {
       await runFile(execFileImpl, "docker", ["restart", containerName]);
     },
 
+    async readServerProperty(name) {
+      if (!enabled) return null;
+      try {
+        const contents = await runFile(execFileImpl, "docker", [
+          "exec",
+          containerName,
+          "cat",
+          "/data/server.properties",
+        ]);
+        for (const rawLine of contents.split(/\r?\n/u)) {
+          const line = rawLine.trim();
+          if (line.startsWith("#")) continue;
+          const separator = line.indexOf("=");
+          if (separator < 0) continue;
+          if (line.slice(0, separator).trim() === name) {
+            return line.slice(separator + 1).trim();
+          }
+        }
+      } catch {
+        // A custom image may keep its configuration elsewhere. State polling
+        // should still return time and players instead of failing wholesale.
+      }
+      return null;
+    },
+
     followLogs(onData, onError, onClose, options = {}) {
       if (!enabled) return null;
       const tail = Number.isInteger(options.tail)
@@ -180,14 +238,21 @@ function createBedrockBackend(config, dependencies = {}) {
   const containerName = config.containerName || "minecraft";
   const docker = dockerTools(containerName, true, dependencies);
   const execFileImpl = dependencies.execFile || execFile;
+  const waitForCommandOutput =
+    dependencies.waitForCommandOutput ||
+    (() => new Promise((resolve) => setTimeout(resolve, 150)));
+
+  let observedDifficulty = null;
 
   async function backendExecute(command) {
-    return runFile(execFileImpl, "docker", [
+    const response = await runFile(execFileImpl, "docker", [
       "exec",
       containerName,
       "send-command",
       command,
     ]);
+    observedDifficulty = difficultyFromCommand(command) || observedDifficulty;
+    return response;
   }
 
   return {
@@ -210,13 +275,26 @@ function createBedrockBackend(config, dependencies = {}) {
     async observeState() {
       const status = await docker.status();
       if (status !== "running") return { state: status };
-      const [daytime, players] = await Promise.all([
+      await Promise.all([
         backendExecute("time query daytime"),
         backendExecute("list"),
       ]);
+      // The Bedrock container's send-command helper writes to the server's
+      // stdin and returns before the reply reaches stdout. Read the latest
+      // bounded log tail after that reply lands instead of treating the empty
+      // helper output as an unknown state.
+      await waitForCommandOutput();
+      const [recentLogs, configuredDifficulty] = await Promise.all([
+        docker.readLogs({ tail: 80 }),
+        docker.readServerProperty("difficulty"),
+      ]);
+      observedDifficulty =
+        observedDifficulty || normalizeDifficulty(configuredDifficulty);
+      const observedOutput = `${recentLogs.stdout}\n${recentLogs.stderr}`;
       return {
         state: status,
-        ...parseObservedState("bedrock", daytime, players),
+        ...parseObservedState("bedrock", observedOutput, observedOutput),
+        ...(observedDifficulty ? { difficulty: observedDifficulty } : {}),
       };
     },
     start: docker.start,
@@ -241,6 +319,8 @@ function createJavaBackend(config, dependencies = {}) {
     throw new Error("RCON_PASSWORD is required when SERVER_TYPE is java.");
   }
 
+  let observedDifficulty = null;
+
   async function backendExecute(command) {
     const client = await Rcon.connect({
       host: config.rconHost || containerName,
@@ -248,7 +328,9 @@ function createJavaBackend(config, dependencies = {}) {
       password: config.rconPassword,
     });
     try {
-      return (await client.send(command)) || "";
+      const response = (await client.send(command)) || "";
+      observedDifficulty = difficultyFromCommand(command) || observedDifficulty;
+      return response;
     } finally {
       client.end();
     }
@@ -271,13 +353,17 @@ function createJavaBackend(config, dependencies = {}) {
     async observeState() {
       const status = dockerEnabled ? await docker.status() : "reachable";
       if (dockerEnabled && status !== "running") return { state: status };
-      const [daytime, players] = await Promise.all([
+      const [daytime, players, configuredDifficulty] = await Promise.all([
         backendExecute("time query daytime"),
         backendExecute("list"),
+        docker.readServerProperty("difficulty"),
       ]);
+      observedDifficulty =
+        observedDifficulty || normalizeDifficulty(configuredDifficulty);
       return {
         state: status,
         ...parseObservedState("java", daytime, players),
+        ...(observedDifficulty ? { difficulty: observedDifficulty } : {}),
       };
     },
     start: docker.start,
@@ -314,4 +400,5 @@ module.exports = {
   validateMessage,
   formatDuration,
   parseObservedState,
+  normalizeDifficulty,
 };
