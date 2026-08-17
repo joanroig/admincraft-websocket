@@ -224,7 +224,7 @@ function dockerTools(containerName, enabled, dependencies) {
     async readLogs(options = {}) {
       if (!enabled) return { stdout: "", stderr: "" };
       const tail = Number.isInteger(options.tail)
-        ? Math.max(0, Math.min(options.tail, 1000))
+        ? Math.max(0, Math.min(options.tail, 10000))
         : 250;
       const args = ["logs", "--tail", String(tail)];
       if (options.timestamps) args.push("--timestamps");

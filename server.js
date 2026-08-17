@@ -12,6 +12,11 @@ const {
 } = require("./bridge-auth");
 const { executeBridgeCommand } = require("./bridge-commands");
 const { createBackend, validateMessage } = require("./minecraft-backend");
+const {
+  isInternalStateReply,
+  splitLogLine,
+  trimVisibleLogHistory,
+} = require("./log-history");
 const { version: BRIDGE_VERSION } = require("./package.json");
 
 const USE_SSL = process.env.USE_SSL === "true";
@@ -87,13 +92,6 @@ function eventId(stream, at, message) {
     .slice(0, 24);
 }
 
-function isInternalStateReply(message) {
-  return (
-    /(?:Daytime is|The time is) \d+/u.test(message) ||
-    /There are \d+(?:\/\d+| of a max of \d+) players online/u.test(message)
-  );
-}
-
 /// Converts Docker's `--timestamps` stream into complete, deduplicatable log
 /// frames. Docker may split a line across arbitrary data chunks, so the final
 /// fragment is retained until its newline arrives.
@@ -101,9 +99,7 @@ function createLogForwarder(ws, stream) {
   let remainder = "";
 
   function emit(line) {
-    const separator = line.indexOf(" ");
-    const at = separator > 0 ? line.slice(0, separator) : "";
-    const message = separator > 0 ? line.slice(separator + 1) : line;
+    const { at, message } = splitLogLine(line);
     if (!message || isInternalStateReply(message)) return;
     sendEvent(ws, "admincraft.log", {
       id: eventId(stream, at, message),
@@ -202,12 +198,13 @@ wss.on("connection", (ws, request) => {
   }
 
   async function replayLogs(tail, { signalComplete = true } = {}) {
-    const history = await backend.readLogs({ tail, timestamps: true });
+    const rawTail = Math.min(10000, Math.max(tail, tail * 10));
+    const history = await backend.readLogs({ tail: rawTail, timestamps: true });
     if (closed) return;
     const historyStdout = createLogForwarder(ws, "stdout");
     const historyStderr = createLogForwarder(ws, "stderr");
-    historyStdout.push(history.stdout || "");
-    historyStderr.push(history.stderr || "");
+    historyStdout.push(trimVisibleLogHistory(history.stdout || "", tail));
+    historyStderr.push(trimVisibleLogHistory(history.stderr || "", tail));
     historyStdout.flush();
     historyStderr.flush();
     if (signalComplete) {

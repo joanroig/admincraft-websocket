@@ -187,6 +187,28 @@ test("initial log history is read as a bounded timestamped snapshot", async () =
   });
 });
 
+test("history reader permits an amplified raw window for filtered replay", async () => {
+  let invocation;
+  const backend = createBedrockBackend(
+    { containerName: "bedrock-server" },
+    {
+      execFile(file, args, callback) {
+        invocation = { file, args };
+        callback(null, "", "");
+      },
+    },
+  );
+
+  await backend.readLogs({ tail: 10000, timestamps: true });
+  assert.deepEqual(invocation.args, [
+    "logs",
+    "--tail",
+    "10000",
+    "--timestamps",
+    "bedrock-server",
+  ]);
+});
+
 test("Docker-backed servers report status and support lifecycle controls", async () => {
   const invocations = [];
   const backend = createBedrockBackend(
